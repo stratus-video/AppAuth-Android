@@ -160,7 +160,7 @@ public class IdToken {
         return new JSONObject(jsonString);
     }
 
-    static IdToken from(String token) throws JSONException, IdTokenException {
+    public static IdToken from(String token) throws JSONException, IdTokenException {
         String[] sections = token.split("\\.");
 
         if (sections.length <= 1) {
