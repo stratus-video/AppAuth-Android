@@ -160,7 +160,7 @@ public class IdToken {
         return new JSONObject(jsonString);
     }
 
-    static IdToken from(String token) throws JSONException, IdTokenException {
+    public static IdToken from(String token) throws JSONException, IdTokenException {
         String[] sections = token.split("\\.");
 
         if (sections.length <= 1) {
@@ -168,7 +168,7 @@ public class IdToken {
         }
 
         // We ignore header contents, but parse it to check that it is structurally valid JSON
-        parseJwtSection(sections[0]);
+        JSONObject headers = parseJwtSection(sections[0]);
         JSONObject claims = parseJwtSection(sections[1]);
 
         final String issuer = JsonUtil.getString(claims, KEY_ISSUER);
@@ -182,7 +182,11 @@ public class IdToken {
         }
         final Long expiration = claims.getLong(KEY_EXPIRATION);
         final Long issuedAt = claims.getLong(KEY_ISSUED_AT);
-        final String nonce = JsonUtil.getStringIfDefined(claims, KEY_NONCE);
+        String tempNonce = JsonUtil.getStringIfDefined(claims, KEY_NONCE);
+        if (tempNonce == null) {
+            tempNonce = JsonUtil.getStringIfDefined(headers, KEY_NONCE);
+        }
+        final String nonce = tempNonce;
         final String authorizedParty = JsonUtil.getStringIfDefined(claims, KEY_AUTHORIZED_PARTY);
 
         for (String key: BUILT_IN_CLAIMS) {
