@@ -167,6 +167,7 @@ public class IdToken {
             throw new IdTokenException("ID token must have both header and claims section");
         }
 
+        // (AMN code changes invalidated this comment, 04-2024) We ignore header contents, but parse it to check that it is structurally valid JSON
         // We are using headers to get nonce field from it and also parse it to check that it is
         // structurally valid JSON
         JSONObject headers = parseJwtSection(sections[0]);
