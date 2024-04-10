@@ -160,15 +160,17 @@ public class IdToken {
         return new JSONObject(jsonString);
     }
 
-    static IdToken from(String token) throws JSONException, IdTokenException {
+    public static IdToken from(String token) throws JSONException, IdTokenException {
         String[] sections = token.split("\\.");
 
         if (sections.length <= 1) {
             throw new IdTokenException("ID token must have both header and claims section");
         }
 
-        // We ignore header contents, but parse it to check that it is structurally valid JSON
-        parseJwtSection(sections[0]);
+        // (AMN code changes invalidated this comment, 04-2024) We ignore header contents, but parse it to check that it is structurally valid JSON
+        // We are using headers to get nonce field from it and also parse it to check that it is
+        // structurally valid JSON
+        JSONObject headers = parseJwtSection(sections[0]);
         JSONObject claims = parseJwtSection(sections[1]);
 
         final String issuer = JsonUtil.getString(claims, KEY_ISSUER);
@@ -182,7 +184,14 @@ public class IdToken {
         }
         final Long expiration = claims.getLong(KEY_EXPIRATION);
         final Long issuedAt = claims.getLong(KEY_ISSUED_AT);
-        final String nonce = JsonUtil.getStringIfDefined(claims, KEY_NONCE);
+        // First it try to take the nonce field from the claims, and if there is no nonce field,
+        // it will try to take it from headers.
+        // When it is working with Azure the nonce field coming in the headers.
+        String tempNonce = JsonUtil.getStringIfDefined(claims, KEY_NONCE);
+        if (tempNonce == null) {
+            tempNonce = JsonUtil.getStringIfDefined(headers, KEY_NONCE);
+        }
+        final String nonce = tempNonce;
         final String authorizedParty = JsonUtil.getStringIfDefined(claims, KEY_AUTHORIZED_PARTY);
 
         for (String key: BUILT_IN_CLAIMS) {
@@ -218,6 +227,14 @@ public class IdToken {
         AuthorizationServiceDiscovery discoveryDoc = tokenRequest.configuration.discoveryDoc;
         if (discoveryDoc != null) {
             String expectedIssuer = discoveryDoc.getIssuer();
+
+            if (expectedIssuer.contains("{tenantid}")) {
+                String tid = (String) this.additionalClaims.get("tid");
+                if (tid != null && !tid.isEmpty()) {
+                    expectedIssuer = expectedIssuer.replace("{tenantid}", tid);
+                }
+            }
+
             if (!this.issuer.equals(expectedIssuer)) {
                 throw AuthorizationException.fromTemplate(GeneralErrors.ID_TOKEN_VALIDATION_ERROR,
                     new IdTokenException("Issuer mismatch"));
