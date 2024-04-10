@@ -167,7 +167,8 @@ public class IdToken {
             throw new IdTokenException("ID token must have both header and claims section");
         }
 
-        // We ignore header contents, but parse it to check that it is structurally valid JSON
+        // We are using headers to get nonce field from it and also parse it to check that it is
+        // structurally valid JSON
         JSONObject headers = parseJwtSection(sections[0]);
         JSONObject claims = parseJwtSection(sections[1]);
 
@@ -182,6 +183,9 @@ public class IdToken {
         }
         final Long expiration = claims.getLong(KEY_EXPIRATION);
         final Long issuedAt = claims.getLong(KEY_ISSUED_AT);
+        // First it try to take the nonce field from the claims, and if there is no nonce field,
+        // it will try to take it from headers.
+        // When it is working with Azure the nonce field coming in the headers.
         String tempNonce = JsonUtil.getStringIfDefined(claims, KEY_NONCE);
         if (tempNonce == null) {
             tempNonce = JsonUtil.getStringIfDefined(headers, KEY_NONCE);
